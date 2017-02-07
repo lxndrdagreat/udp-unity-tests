@@ -18,6 +18,7 @@ public class UDPTestPlayer : MonoBehaviour {
     [SerializeField]
     [Tooltip("How often (in seconds) to send a heartbeat to make sure we don't get kicked from the server.")]
     private float m_HeartbeatRate = 30.0f;
+    private float m_HeartbeatTimer = 0.0f;
 
     [Header("Player Handling")]
     [Tooltip("One of these will be spawned for each connected player.")]
@@ -30,11 +31,8 @@ public class UDPTestPlayer : MonoBehaviour {
     private MessageProtocol m_Protocol;
     private IPEndPoint m_ServerEndpoint;
 
-    private string m_Test = "nope";
-
     void Awake()
     {
-        m_Test = "yep";
         m_Protocol = new MessageProtocol();
         m_Socket = new UdpClient();
         m_ServerEndpoint = new IPEndPoint(IPAddress.Parse(serverAddress), serverPort);
@@ -44,6 +42,7 @@ public class UDPTestPlayer : MonoBehaviour {
 
         // Send a hello message
         Send("message", "Hello there!");
+        m_HeartbeatTimer = m_HeartbeatRate;
     }
 
 	// Use this for initialization
@@ -53,7 +52,12 @@ public class UDPTestPlayer : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		
+        m_HeartbeatTimer -= Time.deltaTime;
+        if (m_HeartbeatTimer <= 0.0f)
+        {
+            m_HeartbeatTimer = m_HeartbeatRate;
+            Send("heartbeat", "heartbeat");
+        }
 	}
 
     public void Send(string eventName, object data)
