@@ -77,7 +77,7 @@ public class UDPTestPlayer : MonoBehaviour {
 		}
 	}
 
-    public void Send(string eventName, object data)
+    public void Send(string eventName, string data)
     {
         var message = m_Protocol.CreateMessage(eventName, data);
 
@@ -89,10 +89,12 @@ public class UDPTestPlayer : MonoBehaviour {
 	}
 
 	void HandleMessage(Message message){
+		Debug.Log ("Message: " + message.t);
 		Debug.Log (message.p);
+
 		if (message.t == "welcome") {
 			// received welcome message from the server
-			var playerData = message.p as PlayerData;
+			var playerData = JsonConvert.DeserializeObject<PlayerData>(message.p);
 			var playerObject = (GameObject)Instantiate(playerPrefab);
 			var playerComponent = playerObject.GetComponent<PlayerComponent> ();
 			playerComponent.Init (this, true, playerData.uuid);
@@ -102,19 +104,19 @@ public class UDPTestPlayer : MonoBehaviour {
 
 		} else if (message.t == "players") {
 			// received updates to players
-			var list = message.p as List<PlayerData>;
-			foreach (var p in list) {
-				if (m_ConnectedPlayers.ContainsKey (p.uuid)) {
-					var player = m_ConnectedPlayers [p.uuid];
-				} else if (m_LocalPlayer != null && p.uuid != m_LocalPlayer.uuid()){
-					// create new player
-					var playerObject = (GameObject)Instantiate(playerPrefab);
-					var playerComponent = playerObject.GetComponent<PlayerComponent> ();
-					playerComponent.Init (this, false, p.uuid);
-					playerComponent.UpdateData (p);
-					m_ConnectedPlayers.Add (p.uuid, playerComponent);
-				}
-			}
+//			var list = message.p as List<PlayerData>;
+//			foreach (var p in list) {
+//				if (m_ConnectedPlayers.ContainsKey (p.uuid)) {
+//					var player = m_ConnectedPlayers [p.uuid];
+//				} else if (m_LocalPlayer != null && p.uuid != m_LocalPlayer.uuid()){
+//					// create new player
+//					var playerObject = (GameObject)Instantiate(playerPrefab);
+//					var playerComponent = playerObject.GetComponent<PlayerComponent> ();
+//					playerComponent.Init (this, false, p.uuid);
+//					playerComponent.UpdateData (p);
+//					m_ConnectedPlayers.Add (p.uuid, playerComponent);
+//				}
+//			}
 		}
 	}
 
@@ -168,7 +170,7 @@ public class UDPTestPlayer : MonoBehaviour {
 [System.Serializable]
 public class PlayerData {
 	public string uuid;
-	public Vector2 position;
+	public float[] position;
 	public float rotation;
 	public float colorRed;
 	public float colorBlue;

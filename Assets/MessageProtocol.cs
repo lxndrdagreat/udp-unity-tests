@@ -9,17 +9,17 @@ using System.Text;
 public struct Message
 {
     public string t; // type
-    public object p; // payload
+	public string p;
 }
 
 class MessageProtocol
 {
 
-    public byte[] CreateMessage(string eventType, object payload)
+    public byte[] CreateMessage(string eventType, string payload)
     {
         var message = new Message();
         message.t = eventType;
-        message.p = payload;
+		message.p = payload;
         var jsonstring = JsonConvert.SerializeObject(message);
         jsonstring = jsonstring + "\n";
         return Encoding.UTF8.GetBytes(jsonstring);

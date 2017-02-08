@@ -50,6 +50,6 @@ public class PlayerComponent : MonoBehaviour {
 		if (m_Color != color) {
 			SetPlayerColor (color);
 		}
-		transform.position = data.position;
+		transform.position = new Vector3 (data.position [0], data.position [1]);
 	}
 }
