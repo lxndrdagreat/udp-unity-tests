@@ -24,15 +24,26 @@ public class UDPTestPlayer : MonoBehaviour {
     [Tooltip("One of these will be spawned for each connected player.")]
     public GameObject playerPrefab;
 
-    
+	// All connected players (including local player)
+	private Dictionary<string, PlayerComponent> m_ConnectedPlayers;
+
+	// Local player
+	private PlayerComponent m_LocalPlayer = null;
+
+	// This Client's UUID, as received from the server
+	private string m_UUID = null;
 
     private UdpClient m_Socket;
 
     private MessageProtocol m_Protocol;
     private IPEndPoint m_ServerEndpoint;
 
+	private List<Message> m_MessageQueue;
+
     void Awake()
     {
+		m_MessageQueue = new List<Message> ();
+		m_ConnectedPlayers = new Dictionary<string, PlayerComponent> ();
         m_Protocol = new MessageProtocol();
         m_Socket = new UdpClient();
         m_ServerEndpoint = new IPEndPoint(IPAddress.Parse(serverAddress), serverPort);
@@ -58,6 +69,12 @@ public class UDPTestPlayer : MonoBehaviour {
             m_HeartbeatTimer = m_HeartbeatRate;
             Send("heartbeat", "heartbeat");
         }
+
+		while (m_MessageQueue.Count > 0) {
+			var message = m_MessageQueue [0];
+			m_MessageQueue.RemoveAt (0);
+			HandleMessage (message);
+		}
 	}
 
     public void Send(string eventName, object data)
@@ -67,6 +84,40 @@ public class UDPTestPlayer : MonoBehaviour {
         m_Socket.Send(message, message.Length, m_ServerEndpoint);
     }
 
+	void QueueMessage(Message m){
+		m_MessageQueue.Add (m);
+	}
+
+	void HandleMessage(Message message){
+		Debug.Log (message.p);
+		if (message.t == "welcome") {
+			// received welcome message from the server
+			var playerData = message.p as PlayerData;
+			var playerObject = (GameObject)Instantiate(playerPrefab);
+			var playerComponent = playerObject.GetComponent<PlayerComponent> ();
+			playerComponent.Init (this, true, playerData.uuid);
+			playerComponent.UpdateData (playerData);
+			m_ConnectedPlayers.Add (playerData.uuid, playerComponent);
+			m_LocalPlayer = playerComponent;
+
+		} else if (message.t == "players") {
+			// received updates to players
+			var list = message.p as List<PlayerData>;
+			foreach (var p in list) {
+				if (m_ConnectedPlayers.ContainsKey (p.uuid)) {
+					var player = m_ConnectedPlayers [p.uuid];
+				} else if (m_LocalPlayer != null && p.uuid != m_LocalPlayer.uuid()){
+					// create new player
+					var playerObject = (GameObject)Instantiate(playerPrefab);
+					var playerComponent = playerObject.GetComponent<PlayerComponent> ();
+					playerComponent.Init (this, false, p.uuid);
+					playerComponent.UpdateData (p);
+					m_ConnectedPlayers.Add (p.uuid, playerComponent);
+				}
+			}
+		}
+	}
+
     void OnUdpData(IAsyncResult result)
     {
         // points towards whoever had sent the message:
@@ -75,7 +126,9 @@ public class UDPTestPlayer : MonoBehaviour {
         byte[] data = m_Socket.EndReceive(result, ref source);
         // do what you'd like with `message` here:
         var message = m_Protocol.ParseMessage(data);
-        Debug.Log(message.p);
+		QueueMessage (message);
+		// HandleMessage (message);
+        //Debug.Log(message.p);
         // schedule the next receive operation once reading is done:
         m_Socket.BeginReceive(new AsyncCallback(OnUdpData), null);
     }
@@ -110,4 +163,14 @@ public class UDPTestPlayer : MonoBehaviour {
 
         socket.Send(message, message.Length, target);
     }
+}
+
+[System.Serializable]
+public class PlayerData {
+	public string uuid;
+	public Vector2 position;
+	public float rotation;
+	public float colorRed;
+	public float colorBlue;
+	public float colorGreen;
 }
