@@ -30,6 +30,10 @@ public class PlayerComponent : MonoBehaviour {
 		m_IsSocketInitialized = true;
 		m_IsLocal = local;
 		m_UUID = uuid;
+
+		if (m_IsLocal) {
+			Camera.main.GetComponent<FollowTarget> ().target = transform;
+		}
 	}
 
 	// Use this for initialization
