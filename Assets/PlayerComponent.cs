@@ -61,6 +61,16 @@ public class PlayerComponent : MonoBehaviour {
         {
             x = 0;
         }
+		if (Input.GetKeyDown (KeyCode.UpArrow)) {
+			y = 1;
+		} else if (Input.GetKeyUp (KeyCode.UpArrow) && y == 1) {
+			y = 0;
+		}
+		if (Input.GetKeyDown (KeyCode.DownArrow)) {
+			y = -1;
+		} else if (Input.GetKeyUp (KeyCode.DownArrow) && y == -1) {
+			y = 0;
+		}
         if (x != deltaX || y != deltaY)
         {
             deltaX = x;
