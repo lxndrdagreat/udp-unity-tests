@@ -142,7 +142,10 @@ public class UDPTestPlayer : MonoBehaviour {
 				}
 			}
 		} else if (message.t == "player_left") {
+            message.p = JsonConvert.DeserializeObject<string>(message.p);
+            Debug.Log("Player left: " + message.p);
 			if (m_ConnectedPlayers.ContainsKey (message.p)) {
+                Debug.Log("Removing player: " + message.p);
 				var deadPlayer = m_ConnectedPlayers [message.p];
 				Destroy (deadPlayer.gameObject);
 				m_ConnectedPlayers.Remove (message.p);
