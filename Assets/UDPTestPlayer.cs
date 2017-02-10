@@ -116,9 +116,9 @@ public class UDPTestPlayer : MonoBehaviour {
 
 		if (message.t == "welcome") {
 			// received welcome message from the server
-			var playerData = JsonConvert.DeserializeObject<PlayerData>(message.p);
-            m_UUID = playerData.uuid;
-			var playerObject = (GameObject)Instantiate(playerPrefab);
+			var playerData = JsonConvert.DeserializeObject<PlayerData> (message.p);
+			m_UUID = playerData.uuid;
+			var playerObject = (GameObject)Instantiate (playerPrefab);
 			var playerComponent = playerObject.GetComponent<PlayerComponent> ();
 			playerComponent.Init (this, true, playerData.uuid);
 			playerComponent.UpdateData (playerData);
@@ -126,26 +126,28 @@ public class UDPTestPlayer : MonoBehaviour {
 			m_LocalPlayer = playerComponent;
 
 		} else if (message.t == "players") {
-            // received updates to players
-            var list = JsonConvert.DeserializeObject<List<PlayerData>>(message.p);
-            foreach (var p in list)
-            {
-                if (m_ConnectedPlayers.ContainsKey(p.uuid))
-                {
-                    var player = m_ConnectedPlayers[p.uuid];
-                    player.UpdateData(p);
-                }
-                else if (m_LocalPlayer != null && p.uuid != m_LocalPlayer.uuid())
-                {
-                    // create new player
-                    var playerObject = (GameObject)Instantiate(playerPrefab);
-                    var playerComponent = playerObject.GetComponent<PlayerComponent>();
-                    playerComponent.Init(this, false, p.uuid);
-                    playerComponent.UpdateData(p);
-                    m_ConnectedPlayers.Add(p.uuid, playerComponent);
-                }
-            }
-        }
+			// received updates to players
+			var list = JsonConvert.DeserializeObject<List<PlayerData>> (message.p);
+			foreach (var p in list) {
+				if (m_ConnectedPlayers.ContainsKey (p.uuid)) {
+					var player = m_ConnectedPlayers [p.uuid];
+					player.UpdateData (p);
+				} else if (m_LocalPlayer != null && p.uuid != m_LocalPlayer.uuid ()) {
+					// create new player
+					var playerObject = (GameObject)Instantiate (playerPrefab);
+					var playerComponent = playerObject.GetComponent<PlayerComponent> ();
+					playerComponent.Init (this, false, p.uuid);
+					playerComponent.UpdateData (p);
+					m_ConnectedPlayers.Add (p.uuid, playerComponent);
+				}
+			}
+		} else if (message.t == "player_left") {
+			if (m_ConnectedPlayers.ContainsKey (message.p)) {
+				var deadPlayer = m_ConnectedPlayers [message.p];
+				Destroy (deadPlayer.gameObject);
+				m_ConnectedPlayers.Remove (message.p);
+			}
+		}
 	}
 
     void OnUdpData(IAsyncResult result)
