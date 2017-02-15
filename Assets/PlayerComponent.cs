@@ -83,7 +83,7 @@ public class PlayerComponent : MonoBehaviour {
             d[0] = deltaX;
             d[1] = deltaY;
             var as_json = JsonConvert.SerializeObject(d);
-            m_SocketManager.Send(PacketId.PLAYER_INPUT, as_json);
+            m_SocketManager.QueueMessage(PacketId.PLAYER_INPUT, as_json);
         }
 	}
 

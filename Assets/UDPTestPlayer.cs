@@ -41,6 +41,14 @@ public class UDPTestPlayer : MonoBehaviour {
 
 	private List<Message> m_MessageQueue;
     private List<AckInfo> m_AcksToSend;
+    private List<QueuedMessage> m_OutboundQueue;
+
+    private struct QueuedMessage
+    {
+        public PacketId id;
+        public string data;
+        public bool needsAck;
+    }
 
     private struct AckInfo
     {
@@ -50,6 +58,7 @@ public class UDPTestPlayer : MonoBehaviour {
 
     void Awake()
     {
+        m_OutboundQueue = new List<QueuedMessage>();
         m_AcksToSend = new List<AckInfo>();
 		m_MessageQueue = new List<Message> ();
 		m_ConnectedPlayers = new Dictionary<int, PlayerComponent> ();
@@ -86,11 +95,27 @@ public class UDPTestPlayer : MonoBehaviour {
 
         lock (m_AcksToSend)
         {
-            StartCoroutine(HandleAckQueue());
+            HandleAckQueue();
         }
+
+        HandleOutboundQueue();
 	}
 
-    public void Send(PacketId eventName, string data, bool needAck=false)
+    public void QueueMessage(PacketId eventName, string data, bool needsAck= false)
+    {
+        var qm = new QueuedMessage
+        {
+            id = eventName,
+            data = data,
+            needsAck = needsAck
+        };
+        lock (m_OutboundQueue)
+        {
+            m_OutboundQueue.Add(qm);
+        }
+    }
+
+    private void Send(PacketId eventName, string data, bool needAck=false)
     {
         var message = m_Protocol.CreateMessage(eventName, data);        
         try
@@ -103,12 +128,25 @@ public class UDPTestPlayer : MonoBehaviour {
         }        
     }
 
-	void QueueMessage(Message m){
+	void QueueIncomingMessage(Message m){
         lock (m_MessageQueue)
         {
             m_MessageQueue.Add(m);
         }		
 	}
+
+    void HandleOutboundQueue()
+    {
+        lock (m_OutboundQueue)
+        {
+            while (m_OutboundQueue.Count > 0)
+            {
+                var message = m_OutboundQueue[0];
+                m_OutboundQueue.RemoveAt(0);
+                Send(message.id, message.data, message.needsAck);
+            }
+        }
+    }
 
     IEnumerator HandleMessageQueue()
     {
@@ -121,7 +159,7 @@ public class UDPTestPlayer : MonoBehaviour {
         }
     }
 
-    IEnumerator HandleAckQueue()
+    void HandleAckQueue()
     {
         List<AckInfo> acksDone = new List<AckInfo>();
         List<int> finalAckList = new List<int>();
@@ -135,7 +173,6 @@ public class UDPTestPlayer : MonoBehaviour {
                 continue;
             }
             finalAckList.Add(ack.sequenceNumber);
-            yield return null;
         }
 
         foreach (var ack in acksDone)
@@ -223,7 +260,7 @@ public class UDPTestPlayer : MonoBehaviour {
         byte[] data = m_Socket.EndReceive(result, ref source);
         // do what you'd like with `message` here:
         var message = m_Protocol.ParseMessage(data);
-		QueueMessage (message);
+		QueueIncomingMessage (message);
 		// HandleMessage (message);
         //Debug.Log(message.p);
         // schedule the next receive operation once reading is done:
