@@ -50,7 +50,7 @@ public class UDPTestPlayer : MonoBehaviour {
         public bool needsAck;
     }
 
-    private struct AckInfo
+	public class AckInfo
     {
         public int sequenceNumber;
         public int attempts;
@@ -120,7 +120,9 @@ public class UDPTestPlayer : MonoBehaviour {
         var message = m_Protocol.CreateMessage(eventName, data);        
         try
         {
+			// Debug.Log("sending " + eventName);
             m_Socket.Send(message, message.Length, m_ServerEndpoint);
+			// Debug.Log("sent " + eventName);
         }
         catch (Exception e)
         {
@@ -139,12 +141,10 @@ public class UDPTestPlayer : MonoBehaviour {
     {
         lock (m_OutboundQueue)
         {
-            while (m_OutboundQueue.Count > 0)
-            {
-                var message = m_OutboundQueue[0];
-                m_OutboundQueue.RemoveAt(0);
+			foreach (var message in m_OutboundQueue){				
                 Send(message.id, message.data, message.needsAck);
             }
+			m_OutboundQueue.Clear ();
         }
     }
 
@@ -165,8 +165,9 @@ public class UDPTestPlayer : MonoBehaviour {
         List<int> finalAckList = new List<int>();
         for (var i = 0; i < m_AcksToSend.Count; ++i)        
         {
-            var ack = m_AcksToSend[i];
-            ack.attempts += 1;
+			var ack = m_AcksToSend[i];
+			ack.attempts = ack.attempts + 1;
+			// Debug.Log ("ACK " + ack.sequenceNumber + " attempts: " + ack.attempts);
             if (ack.attempts > 10)
             {
                 acksDone.Add(ack);
@@ -174,7 +175,7 @@ public class UDPTestPlayer : MonoBehaviour {
             }
             finalAckList.Add(ack.sequenceNumber);
         }
-
+		// Debug.Log ("dead acks: " + acksDone.Count);
         foreach (var ack in acksDone)
         {
             m_AcksToSend.Remove(ack);
