@@ -14,8 +14,8 @@ public class PlayerComponent : MonoBehaviour {
     private int deltaX = 0;
     private int deltaY = 0;
 
-	private string m_UUID = null;
-	public string uuid() {
+	private int m_UUID = -1;
+	public int uuid() {
 		return m_UUID;
 	}
 
@@ -25,7 +25,7 @@ public class PlayerComponent : MonoBehaviour {
 		m_Renderer = GetComponent<SpriteRenderer> ();
 	}
 
-	public void Init(UDPTestPlayer manager, bool local, string uuid){
+	public void Init(UDPTestPlayer manager, bool local, int uuid){
 		m_SocketManager = manager;
 		m_IsSocketInitialized = true;
 		m_IsLocal = local;
@@ -83,7 +83,7 @@ public class PlayerComponent : MonoBehaviour {
             d[0] = deltaX;
             d[1] = deltaY;
             var as_json = JsonConvert.SerializeObject(d);
-            m_SocketManager.Send("player_move", as_json);
+            m_SocketManager.Send(PacketId.PLAYER_INPUT, as_json);
         }
 	}
 
@@ -93,10 +93,10 @@ public class PlayerComponent : MonoBehaviour {
 	}
 
 	public void UpdateData(PlayerData data){
-		var color = new Color (data.colorRed, data.colorGreen, data.colorBlue);
+		var color = new Color ((float)data.colorRed / 255.0f, (float)data.colorGreen / 255.0f, (float)data.colorBlue / 255.0f);
 		if (m_Color != color) {
 			SetPlayerColor (color);
 		}
-		transform.position = new Vector3 (data.position [0], data.position [1]);
+		transform.position = new Vector3 (data.position [0] / 1000, data.position [1] / 1000);
 	}
 }

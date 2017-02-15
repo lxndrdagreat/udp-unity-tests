@@ -11,10 +11,14 @@ using System.IO;
 [System.Serializable]
 public struct Message
 {
-	public PacketId t; // type
-	public byte a; // do we need to ACKnowledge?
-	public int s; // sequence number
-	public string p; // payload
+    [MessagePackMember(0, Name = "t")]   
+    public int t; // type
+    [MessagePackMember(3, Name = "a")]
+    public byte a; // do we need to ACKnowledge?
+    [MessagePackMember(2, Name = "s")]
+    public int s; // sequence number
+    [MessagePackMember(1, Name = "p")]
+    public string p; // payload
 }
 
 public enum PacketId {
@@ -36,11 +40,12 @@ class MessageProtocol
 	public byte[] CreateMessage(PacketId eventType, string payload)
     {
         var message = new Message();
-        message.t = eventType;
+        message.t = (int)eventType;
 		message.p = payload;
-		var serializer = SerializationContext.Default.GetSerializer<Message> ();
-		var stream = new MemoryStream ();
-		serializer.Pack (stream, message);
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<Message>();        
+        var stream = new MemoryStream ();
+        serializer.Pack(stream, message);
 		return stream.ToArray();
     }
 

@@ -25,13 +25,14 @@ public class UDPTestPlayer : MonoBehaviour {
     public GameObject playerPrefab;
 
 	// All connected players (including local player)
-	private Dictionary<string, PlayerComponent> m_ConnectedPlayers;
+	private Dictionary<int, PlayerComponent> m_ConnectedPlayers;
 
 	// Local player
 	private PlayerComponent m_LocalPlayer = null;
+    private bool m_WasWelcomed = false;
 
 	// This Client's UUID, as received from the server
-	private string m_UUID = null;
+	private int m_UUID = -1;
 
     private UdpClient m_Socket;
 
@@ -39,11 +40,19 @@ public class UDPTestPlayer : MonoBehaviour {
     private IPEndPoint m_ServerEndpoint;
 
 	private List<Message> m_MessageQueue;
+    private List<AckInfo> m_AcksToSend;
+
+    private struct AckInfo
+    {
+        public int sequenceNumber;
+        public int attempts;
+    }
 
     void Awake()
     {
+        m_AcksToSend = new List<AckInfo>();
 		m_MessageQueue = new List<Message> ();
-		m_ConnectedPlayers = new Dictionary<string, PlayerComponent> ();
+		m_ConnectedPlayers = new Dictionary<int, PlayerComponent> ();
         m_Protocol = new MessageProtocol();
         m_Socket = new UdpClient();        
         m_ServerEndpoint = new IPEndPoint(IPAddress.Parse(serverAddress), serverPort);
@@ -52,7 +61,7 @@ public class UDPTestPlayer : MonoBehaviour {
         m_Socket.BeginReceive(new AsyncCallback(OnUdpData), null);
 
         // Send a hello message
-        Send("message", "Hello there!");
+        Send(PacketId.JOIN, "Hello there!");
         m_HeartbeatTimer = m_HeartbeatRate;
     }
 
@@ -67,7 +76,7 @@ public class UDPTestPlayer : MonoBehaviour {
         if (m_HeartbeatTimer <= 0.0f)
         {
             m_HeartbeatTimer = m_HeartbeatRate;
-            Send("heartbeat", "heartbeat");
+            // Send("heartbeat", "heartbeat");
         }
 
         lock (m_MessageQueue)
@@ -75,12 +84,15 @@ public class UDPTestPlayer : MonoBehaviour {
             StartCoroutine(HandleMessageQueue());
         }
 
+        lock (m_AcksToSend)
+        {
+            StartCoroutine(HandleAckQueue());
+        }
 	}
 
-    public void Send(string eventName, string data)
+    public void Send(PacketId eventName, string data, bool needAck=false)
     {
-        var message = m_Protocol.CreateMessage(eventName, data);
-        // Debug.Log("sending: " + message.ToString());
+        var message = m_Protocol.CreateMessage(eventName, data);        
         try
         {
             m_Socket.Send(message, message.Length, m_ServerEndpoint);
@@ -107,28 +119,72 @@ public class UDPTestPlayer : MonoBehaviour {
             HandleMessage(message);
             yield return null;
         }
-        yield return null;
+    }
+
+    IEnumerator HandleAckQueue()
+    {
+        List<AckInfo> acksDone = new List<AckInfo>();
+        List<int> finalAckList = new List<int>();
+        for (var i = 0; i < m_AcksToSend.Count; ++i)        
+        {
+            var ack = m_AcksToSend[i];
+            ack.attempts += 1;
+            if (ack.attempts > 10)
+            {
+                acksDone.Add(ack);
+                continue;
+            }
+            finalAckList.Add(ack.sequenceNumber);
+            yield return null;
+        }
+
+        foreach (var ack in acksDone)
+        {
+            m_AcksToSend.Remove(ack);
+        }
+        if (finalAckList.Count > 0)
+        {
+            Send(PacketId.ACK, JsonConvert.SerializeObject(finalAckList));
+        }
+    }
+
+    void QueueAck(int sequenceNumber)
+    {
+        var info = new AckInfo
+        {
+            sequenceNumber = sequenceNumber,
+            attempts = 0
+        };
+        m_AcksToSend.Add(info);
     }
 
     void HandleMessage(Message message){
-		//Debug.Log ("Message: " + message.t);
-		//Debug.Log (message.p);
+        //Debug.Log ("Message: " + message.t);
+        //Debug.Log (message.p);
 
-		if (message.t == PacketId.WELCOME) {
-			// received welcome message from the server
+        if (message.a == 1)
+        {
+            // send ACK back to server
+            QueueAck(message.s);
+        }
+
+		if ((PacketId)message.t == PacketId.WELCOME && !m_WasWelcomed) {
+            // received welcome message from the server
+            m_WasWelcomed = true;           
 			var playerData = JsonConvert.DeserializeObject<PlayerData> (message.p);
 			m_UUID = playerData.uuid;
-			var playerObject = (GameObject)Instantiate (playerPrefab);
+            Debug.Log("I have been welcomed! My Player ID is " + m_UUID);
+            var playerObject = (GameObject)Instantiate (playerPrefab);
 			var playerComponent = playerObject.GetComponent<PlayerComponent> ();
 			playerComponent.Init (this, true, playerData.uuid);
 			playerComponent.UpdateData (playerData);
 			m_ConnectedPlayers.Add (playerData.uuid, playerComponent);
 			m_LocalPlayer = playerComponent;
 
-		} else if (message.t == PacketId.WORLD_INFO) {
+		} else if ((PacketId)message.t == PacketId.WORLD_INFO) {
 
 		}
-		else if (message.t == PacketId.PLAYER_UPDATES) {
+		else if ((PacketId)message.t == PacketId.PLAYER_UPDATES) {
 			// received updates to players
 			var list = JsonConvert.DeserializeObject<List<PlayerData>> (message.p);
 			foreach (var p in list) {
@@ -144,14 +200,14 @@ public class UDPTestPlayer : MonoBehaviour {
 					m_ConnectedPlayers.Add (p.uuid, playerComponent);
 				}
 			}
-		} else if (message.t == PacketId.PLAYER_LEFT) {
-			message.p = JsonConvert.DeserializeObject<string> (message.p);
+		} else if ((PacketId)message.t == PacketId.PLAYER_LEFT) {
+			var uuid = JsonConvert.DeserializeObject<int> (message.p);
 			Debug.Log ("Player left: " + message.p);
-			if (m_ConnectedPlayers.ContainsKey (message.p)) {
+			if (m_ConnectedPlayers.ContainsKey (uuid)) {
 				Debug.Log ("Removing player: " + message.p);
-				var deadPlayer = m_ConnectedPlayers [message.p];
+				var deadPlayer = m_ConnectedPlayers [uuid];
 				Destroy (deadPlayer.gameObject);
-				m_ConnectedPlayers.Remove (message.p);
+				m_ConnectedPlayers.Remove (uuid);
 			}
 		} else {
 			Debug.Log ("Unknown message");
@@ -174,37 +230,6 @@ public class UDPTestPlayer : MonoBehaviour {
         m_Socket.BeginReceive(new AsyncCallback(OnUdpData), null);
     }
 
-    void TestOnUdpData(IAsyncResult result)
-    {
-        // this is what had been passed into BeginReceive as the second parameter:
-        UdpClient socket = result.AsyncState as UdpClient;
-        // points towards whoever had sent the message:
-        IPEndPoint source = new IPEndPoint(0, 0);
-        // get the actual message and fill out the source:
-        byte[] message = socket.EndReceive(result, ref source);
-        // do what you'd like with `message` here:
-        Debug.Log("Got " + message.Length + " bytes from " + source);
-
-        socket.Close();
-    }
-
-    public void Test()
-    {
-        UdpClient socket = new UdpClient(); // `new UdpClient()` to auto-pick port
-
-        // schedule the first receive operation:
-        socket.BeginReceive(new AsyncCallback(TestOnUdpData), socket);
-
-        // sending data (for the sake of simplicity, back to ourselves):
-        IPEndPoint target = new IPEndPoint(IPAddress.Parse(serverAddress), serverPort);
-        // send a couple of sample messages:
-        var protocol = new MessageProtocol();
-
-        var message = protocol.CreateMessage("message", "Hello, world!");
-
-        socket.Send(message, message.Length, target);
-    }
-
 	private IPAddress FirstDnsEntry(string hostName)
 	{
 		IPHostEntry IPHost = Dns.Resolve(hostName);
@@ -220,10 +245,9 @@ public class UDPTestPlayer : MonoBehaviour {
 
 [System.Serializable]
 public class PlayerData {
-	public string uuid;
-	public float[] position;
-	public float rotation;
-	public float colorRed;
-	public float colorBlue;
-	public float colorGreen;
+	public int uuid;
+	public int[] position;
+	public int colorRed;
+	public int colorBlue;
+	public int colorGreen;
 }

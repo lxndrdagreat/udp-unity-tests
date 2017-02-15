@@ -13,12 +13,6 @@ public class ServerManagerEditor : Editor
         // base.OnInspectorGUI();
         DrawDefaultInspector();
 
-        if (GUILayout.Button("Test Connection"))
-        {
-            var manager = (UDPTestPlayer)target;
-            manager.Test();
-        }
-
 		if (GUILayout.Button ("Test DNS")) {
 
 			var manager = (UDPTestPlayer)target;
