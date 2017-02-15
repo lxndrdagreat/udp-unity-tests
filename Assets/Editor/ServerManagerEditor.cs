@@ -18,5 +18,11 @@ public class ServerManagerEditor : Editor
             var manager = (UDPTestPlayer)target;
             manager.Test();
         }
+
+		if (GUILayout.Button ("Test DNS")) {
+
+			var manager = (UDPTestPlayer)target;
+			manager.TestDNS ();
+		}
     }
 }

@@ -114,7 +114,7 @@ public class UDPTestPlayer : MonoBehaviour {
 		//Debug.Log ("Message: " + message.t);
 		//Debug.Log (message.p);
 
-		if (message.t == "welcome") {
+		if (message.t == PacketId.WELCOME) {
 			// received welcome message from the server
 			var playerData = JsonConvert.DeserializeObject<PlayerData> (message.p);
 			m_UUID = playerData.uuid;
@@ -125,7 +125,10 @@ public class UDPTestPlayer : MonoBehaviour {
 			m_ConnectedPlayers.Add (playerData.uuid, playerComponent);
 			m_LocalPlayer = playerComponent;
 
-		} else if (message.t == "players") {
+		} else if (message.t == PacketId.WORLD_INFO) {
+
+		}
+		else if (message.t == PacketId.PLAYER_UPDATES) {
 			// received updates to players
 			var list = JsonConvert.DeserializeObject<List<PlayerData>> (message.p);
 			foreach (var p in list) {
@@ -141,15 +144,17 @@ public class UDPTestPlayer : MonoBehaviour {
 					m_ConnectedPlayers.Add (p.uuid, playerComponent);
 				}
 			}
-		} else if (message.t == "player_left") {
-            message.p = JsonConvert.DeserializeObject<string>(message.p);
-            Debug.Log("Player left: " + message.p);
+		} else if (message.t == PacketId.PLAYER_LEFT) {
+			message.p = JsonConvert.DeserializeObject<string> (message.p);
+			Debug.Log ("Player left: " + message.p);
 			if (m_ConnectedPlayers.ContainsKey (message.p)) {
-                Debug.Log("Removing player: " + message.p);
+				Debug.Log ("Removing player: " + message.p);
 				var deadPlayer = m_ConnectedPlayers [message.p];
 				Destroy (deadPlayer.gameObject);
 				m_ConnectedPlayers.Remove (message.p);
 			}
+		} else {
+			Debug.Log ("Unknown message");
 		}
 	}
 
@@ -199,6 +204,18 @@ public class UDPTestPlayer : MonoBehaviour {
 
         socket.Send(message, message.Length, target);
     }
+
+	private IPAddress FirstDnsEntry(string hostName)
+	{
+		IPHostEntry IPHost = Dns.Resolve(hostName);
+		IPAddress[] addr = IPHost.AddressList;
+		if (addr.Length == 0) throw new Exception("No IP addresses");
+		return addr[0];
+	}
+
+	public void TestDNS(){
+		Debug.Log (FirstDnsEntry (serverAddress));
+	}
 }
 
 [System.Serializable]
