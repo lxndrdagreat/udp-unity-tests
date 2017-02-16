@@ -192,6 +192,11 @@ public class UDPTestPlayer : MonoBehaviour {
 
     void QueueAck(int sequenceNumber)
     {
+        if (m_AcksToSend.Find(a => a.sequenceNumber == sequenceNumber) != null)
+        {
+            // only queue an ack for a particular sequenceNumber once.
+            return;
+        }
         var info = new AckInfo
         {
             sequenceNumber = sequenceNumber,
