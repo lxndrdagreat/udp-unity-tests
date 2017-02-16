@@ -51,6 +51,7 @@ class MessageProtocol
 
     public Message ParseMessage(byte[] data)
     {
+		SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
 		var serializer = SerializationContext.Default.GetSerializer<Message> ();
 		var stream = new MemoryStream (data);
 		var message = serializer.Unpack (stream);

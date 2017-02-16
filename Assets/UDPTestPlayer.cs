@@ -43,6 +43,10 @@ public class UDPTestPlayer : MonoBehaviour {
     private List<AckInfo> m_AcksToSend;
     private List<QueuedMessage> m_OutboundQueue;
 
+	private List<GameObject> m_Walls;
+	[SerializeField]
+	private GameObject m_WallPrefab;
+
     private struct QueuedMessage
     {
         public PacketId id;
@@ -58,6 +62,7 @@ public class UDPTestPlayer : MonoBehaviour {
 
     void Awake()
     {
+		m_Walls = new List<GameObject> ();
         m_OutboundQueue = new List<QueuedMessage>();
         m_AcksToSend = new List<AckInfo>();
 		m_MessageQueue = new List<Message> ();
@@ -90,7 +95,7 @@ public class UDPTestPlayer : MonoBehaviour {
 
         lock (m_MessageQueue)
         {
-            StartCoroutine(HandleMessageQueue());
+            HandleMessageQueue();
         }
 
         lock (m_AcksToSend)
@@ -120,9 +125,9 @@ public class UDPTestPlayer : MonoBehaviour {
         var message = m_Protocol.CreateMessage(eventName, data);        
         try
         {
-			// Debug.Log("sending " + eventName);
+//			 Debug.Log("sending " + eventName);
             m_Socket.Send(message, message.Length, m_ServerEndpoint);
-			// Debug.Log("sent " + eventName);
+//			 Debug.Log("sent " + eventName);
         }
         catch (Exception e)
         {
@@ -148,14 +153,13 @@ public class UDPTestPlayer : MonoBehaviour {
         }
     }
 
-    IEnumerator HandleMessageQueue()
+    void HandleMessageQueue()
     {
         while (m_MessageQueue.Count > 0)
         {
             var message = m_MessageQueue[0];
             m_MessageQueue.RemoveAt(0);
             HandleMessage(message);
-            yield return null;
         }
     }
 
@@ -197,7 +201,7 @@ public class UDPTestPlayer : MonoBehaviour {
     }
 
     void HandleMessage(Message message){
-        //Debug.Log ("Message: " + message.t);
+//        Debug.Log ("Message: " + message.t);
         //Debug.Log (message.p);
 
         if (message.a == 1)
@@ -220,9 +224,34 @@ public class UDPTestPlayer : MonoBehaviour {
 			m_LocalPlayer = playerComponent;
 
 		} else if ((PacketId)message.t == PacketId.WORLD_INFO) {
+			foreach (var go in m_Walls) {
+				Destroy (go);
+			}
+			m_Walls.Clear ();
 
+			var worldSize = JsonConvert.DeserializeObject<SizeDetail> (message.p);
+			for (var x = -worldSize.width; x <= worldSize.width; ++x) {
+				var wall = (GameObject)Instantiate (m_WallPrefab);
+				m_WallPrefab.transform.position = new Vector2 (x, -worldSize.height);
+				m_Walls.Add (m_WallPrefab);
+
+				wall = (GameObject)Instantiate (m_WallPrefab);
+				m_WallPrefab.transform.position = new Vector2 (x, worldSize.height);
+				m_Walls.Add (m_WallPrefab);
+			}
+
+			for (var y = -worldSize.height; y <= worldSize.height; ++y) {
+				var wall = (GameObject)Instantiate (m_WallPrefab);
+				m_WallPrefab.transform.position = new Vector2 (-worldSize.width, y);
+				m_Walls.Add (m_WallPrefab);
+
+				wall = (GameObject)Instantiate (m_WallPrefab);
+				m_WallPrefab.transform.position = new Vector2 (worldSize.width, y);
+				m_Walls.Add (m_WallPrefab);
+			}
 		}
 		else if ((PacketId)message.t == PacketId.PLAYER_UPDATES) {
+			Debug.Log ("player updates!");
 			// received updates to players
 			var list = JsonConvert.DeserializeObject<List<PlayerData>> (message.p);
 			foreach (var p in list) {
@@ -248,7 +277,7 @@ public class UDPTestPlayer : MonoBehaviour {
 				m_ConnectedPlayers.Remove (uuid);
 			}
 		} else {
-			Debug.Log ("Unknown message");
+			Debug.Log ("Unknown message: " + message.t);
 		}
 	}
 
@@ -260,8 +289,14 @@ public class UDPTestPlayer : MonoBehaviour {
         // get the actual message and fill out the source:
         byte[] data = m_Socket.EndReceive(result, ref source);
         // do what you'd like with `message` here:
-        var message = m_Protocol.ParseMessage(data);
-		QueueIncomingMessage (message);
+		try {
+			
+        	var message = m_Protocol.ParseMessage(data);
+			QueueIncomingMessage (message);
+		}
+		catch (Exception e) {
+			Debug.Log ("something went wrong with parsing the message: " + e);
+		}
 		// HandleMessage (message);
         //Debug.Log(message.p);
         // schedule the next receive operation once reading is done:
@@ -288,4 +323,10 @@ public class PlayerData {
 	public int colorRed;
 	public int colorBlue;
 	public int colorGreen;
+}
+
+[System.Serializable]
+public class SizeDetail {
+	public int width;
+	public int height;
 }

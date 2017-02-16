@@ -83,7 +83,7 @@ public class PlayerComponent : MonoBehaviour {
             d[0] = deltaX;
             d[1] = deltaY;
             var as_json = JsonConvert.SerializeObject(d);
-			Debug.Log ("sending movement: " + as_json);
+			// Debug.Log ("sending movement: " + as_json);
             m_SocketManager.QueueMessage(PacketId.PLAYER_INPUT, as_json);
         }
 	}
@@ -98,6 +98,6 @@ public class PlayerComponent : MonoBehaviour {
 		if (m_Color != color) {
 			SetPlayerColor (color);
 		}
-		transform.position = new Vector3 (data.position [0] / 1000, data.position [1] / 1000);
+		transform.position = new Vector3 ((float)data.position [0] / 1000.0f, (float)data.position [1] / 1000.0f);
 	}
 }
