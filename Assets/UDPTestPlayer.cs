@@ -258,7 +258,7 @@ public class UDPTestPlayer : MonoBehaviour {
 			}
 		}
 		else if ((PacketId)message.t == PacketId.PLAYER_UPDATES) {
-			Debug.Log ("player updates!");
+			//Debug.Log ("player updates!");
             // received updates to players
             var list = PlayerData.ListFromBytes(message.p);
 			foreach (var p in list) {
