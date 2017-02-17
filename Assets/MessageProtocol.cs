@@ -13,12 +13,12 @@ public struct Message
 {
     [MessagePackMember(0, Name = "t")]   
     public int t; // type
-    [MessagePackMember(3, Name = "a")]
+    [MessagePackMember(1, Name = "a")]
     public byte a; // do we need to ACKnowledge?
     [MessagePackMember(2, Name = "s")]
     public int s; // sequence number
-    [MessagePackMember(1, Name = "p")]
-    public string p; // payload
+    [MessagePackMember(3, Name = "p")]
+    public byte[] p; // payload
 }
 
 public enum PacketId {
@@ -37,12 +37,12 @@ public enum PacketId {
 class MessageProtocol
 {
 
-	public byte[] CreateMessage(PacketId eventType, string payload)
+	public byte[] CreateMessage(PacketId eventType, byte[] payload)
     {
         var message = new Message();
         message.t = (int)eventType;
 		message.p = payload;
-        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Array;
         var serializer = SerializationContext.Default.GetSerializer<Message>();        
         var stream = new MemoryStream ();
         serializer.Pack(stream, message);
@@ -51,10 +51,112 @@ class MessageProtocol
 
     public Message ParseMessage(byte[] data)
     {
-		SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
-		var serializer = SerializationContext.Default.GetSerializer<Message> ();
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Array;
+        var serializer = SerializationContext.Default.GetSerializer<Message> ();
 		var stream = new MemoryStream (data);
 		var message = serializer.Unpack (stream);
 		return message;
+    }
+
+    public static byte[] PackData(string data)
+    {
+        var serializer = SerializationContext.Default.GetSerializer<string>();
+        var stream = new MemoryStream();
+        serializer.Pack(stream, data);
+        return stream.ToArray();
+    }
+
+    public static byte[] PackData(int data)
+    {
+        var serializer = SerializationContext.Default.GetSerializer<int>();
+        var stream = new MemoryStream();
+        serializer.Pack(stream, data);
+        return stream.ToArray();
+    }
+
+    public static byte[] PackData(int[] data)
+    {
+        var serializer = SerializationContext.Default.GetSerializer<int[]>();
+        var stream = new MemoryStream();
+        serializer.Pack(stream, data);
+        return stream.ToArray();
+    }
+
+    public static int ParseInt(byte[] data)
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<int>();
+        var stream = new MemoryStream(data);
+        var result = serializer.Unpack(stream);
+        return result;
+    }
+}
+
+[System.Serializable]
+public class PlayerData
+{
+    [MessagePackMember(0, Name = "uuid")]
+    public int uuid;
+    [MessagePackMember(1, Name = "position")]
+    public int[] position;
+    [MessagePackMember(2, Name = "coloRed")]
+    public int colorRed;
+    [MessagePackMember(3, Name = "colorBlue")]
+    public int colorBlue;
+    [MessagePackMember(4, Name = "colorGreen")]
+    public int colorGreen;
+
+    public static PlayerData FromBytes(byte[] data)
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<PlayerData>();        
+        var stream = new MemoryStream(data);
+        var playerData = serializer.Unpack(stream);
+        return playerData;
+    }
+
+    public static List<PlayerData> ListFromBytes(byte[] data)
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<List<PlayerData>>();
+        var stream = new MemoryStream(data);
+        var playerData = serializer.Unpack(stream);
+        return playerData;
+    }
+
+    public byte[] ToBytes()
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<PlayerData>();
+        var stream = new MemoryStream();
+        serializer.Pack(stream, this);
+        return stream.ToArray();
+    }
+}
+
+[System.Serializable]
+public class SizeDetail
+{
+    [MessagePackMember(0, Name = "width")]
+    public int width;
+    [MessagePackMember(1, Name = "height")]
+    public int height;
+
+    public static SizeDetail FromBytes(byte[] data)
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<SizeDetail>();
+        var stream = new MemoryStream(data);
+        var playerData = serializer.Unpack(stream);
+        return playerData;
+    }
+
+    public byte[] ToBytes()
+    {
+        SerializationContext.Default.SerializationMethod = SerializationMethod.Map;
+        var serializer = SerializationContext.Default.GetSerializer<SizeDetail>();
+        var stream = new MemoryStream();
+        serializer.Pack(stream, this);
+        return stream.ToArray();
     }
 }
