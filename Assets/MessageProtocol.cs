@@ -25,6 +25,7 @@ public enum PacketId {
 	JOIN = 0,
 	WELCOME = 1,
 	ACK = 2,
+    HEARTBEAT = 3,
 	PLAYER_INFO = 10,
 	PLAYER_UPDATES = 11,
 	PLAYER_LEFT = 12,

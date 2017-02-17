@@ -88,11 +88,14 @@ public class UDPTestPlayer : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+
+        // The job of the heartbeat is to keep our connection to the server alive,
+        // even if we haven't had player input in a while.
         m_HeartbeatTimer -= Time.deltaTime;
         if (m_HeartbeatTimer <= 0.0f)
         {
             m_HeartbeatTimer = m_HeartbeatRate;
-            // Send("heartbeat", "heartbeat");
+            QueueMessage(PacketId.HEARTBEAT, MessageProtocol.PackData(1));
         }
 
         lock (m_MessageQueue)
