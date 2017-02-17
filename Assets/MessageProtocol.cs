@@ -13,9 +13,9 @@ public struct Message
 {
     [MessagePackMember(0, Name = "t")]   
     public int t; // type
-    [MessagePackMember(1, Name = "a")]
-    public byte a; // do we need to ACKnowledge?
-    [MessagePackMember(2, Name = "s")]
+    [MessagePackMember(2, Name = "a")]
+    public int a; // do we need to ACKnowledge?
+    [MessagePackMember(1, Name = "s")]
     public int s; // sequence number
     [MessagePackMember(3, Name = "p")]
     public byte[] p; // payload
