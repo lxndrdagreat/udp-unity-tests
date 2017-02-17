@@ -68,8 +68,10 @@ public class UDPTestPlayer : MonoBehaviour {
 		m_MessageQueue = new List<Message> ();
 		m_ConnectedPlayers = new Dictionary<int, PlayerComponent> ();
         m_Protocol = new MessageProtocol();
-        m_Socket = new UdpClient();        
-        m_ServerEndpoint = new IPEndPoint(IPAddress.Parse(serverAddress), serverPort);
+        m_Socket = new UdpClient();
+
+		var serverIP = FirstDnsEntry (serverAddress);
+		m_ServerEndpoint = new IPEndPoint(serverIP, serverPort);
 
         // schedule the first receive operation:
         m_Socket.BeginReceive(new AsyncCallback(OnUdpData), null);
