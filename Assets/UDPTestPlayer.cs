@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 using System.Net.Sockets;
 using System.Net;
 using Newtonsoft.Json;
@@ -71,6 +72,7 @@ public class UDPTestPlayer : MonoBehaviour {
         m_Socket = new UdpClient();
 
         var serverIP = FirstDnsEntry (serverAddress);
+	    print(serverIP);
 		m_ServerEndpoint = new IPEndPoint(serverIP, serverPort);
 
         // schedule the first receive operation:
@@ -151,7 +153,8 @@ public class UDPTestPlayer : MonoBehaviour {
     {
         lock (m_OutboundQueue)
         {
-			foreach (var message in m_OutboundQueue){				
+			foreach (var message in m_OutboundQueue){	
+				print(string.Format("Sending message: {0}", message.id));
                 Send(message.id, message.data, message.needsAck);
             }
 			m_OutboundQueue.Clear ();
@@ -317,7 +320,11 @@ public class UDPTestPlayer : MonoBehaviour {
         IPHostEntry IPHost = Dns.GetHostEntry(serverAddress);
 		IPAddress[] addr = IPHost.AddressList;
 		if (addr.Length == 0) throw new Exception("No IP addresses");
-		return addr[0];
+/*		foreach (var add in addr)
+		{
+			print(string.Format("address: {0}; format: {1}", add.ToString(), add.AddressFamily));
+		}*/
+		return addr.First(a => a.AddressFamily == AddressFamily.InterNetwork);
 	}
 
 	public void TestDNS(){
